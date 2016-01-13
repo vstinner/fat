@@ -2,16 +2,15 @@
 
 # Todo list to prepare a release:
 #  - git pull --rebase
-#  - downloaded latest Python 2.7 and 3.3 releases, patch them, install them
-#  - run unit tests with Python 2.7 and 3.3
-#  - update VERSION in _tracemalloc.c and setup.py
+#  - run ./runtests.sh
+#  - update VERSION in fat.c and setup.py
 #  - reset option in setup.py: DEBUG=False
-#  - set release date in the doc/changelog.rst file
+#  - set release date in the changelog of README.rst
 #  - git commit -a
-#  - git tag -a pytracemalloc-VERSION
+#  - git tag VERSION
 #  - git push
 #  - git push --tags
-#  - python setup.py register sdist upload
+#  - python3 setup.py register sdist upload
 #
 # After the release:
 #  - set version to n+1

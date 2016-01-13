@@ -35,3 +35,9 @@ Run tests
 Type::
 
     ./runtests.sh
+
+
+Changelog
+=========
+
+* 2016-01-13: First public release.
