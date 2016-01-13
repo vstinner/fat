@@ -1,18 +1,23 @@
 #!/usr/bin/env python
 
-# Todo list to prepare a release:
+# Prepare a release:
+#
 #  - git pull --rebase
 #  - run ./runtests.sh
 #  - update VERSION in fat.c and setup.py
 #  - reset option in setup.py: DEBUG=False
 #  - set release date in the changelog of README.rst
 #  - git commit -a
-#  - git tag VERSION
 #  - git push
+#
+# Release a new version:
+#
+#  - git tag VERSION
 #  - git push --tags
 #  - python3 setup.py register sdist upload
 #
 # After the release:
+#
 #  - set version to n+1
 #  - git commit
 #  - git push
