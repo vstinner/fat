@@ -4,6 +4,8 @@ __astoptimizer__ = {'enabled': False}
 from test import support
 import builtins
 import fat
+import importlib
+import os.path
 import textwrap
 import unittest
 
@@ -830,6 +832,13 @@ class MiscTests(unittest.TestCase):
 
         code3 = fat.replace_consts(code, {'unknown': 7})
         self.assertEqual(code3.co_consts, (None, 3))
+
+    def test_version(self):
+        filename = os.path.join(os.path.dirname(__file__), 'setup.py')
+        loader = importlib.machinery.SourceFileLoader('setup', filename)
+        setup_py = loader.load_module()
+        self.assertEqual(fat.__version__, setup_py.VERSION)
+
 
 
 if __name__ == "__main__":

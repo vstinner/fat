@@ -2,6 +2,8 @@
 #include "frameobject.h"
 #include "structmember.h"
 
+#define VERSION "0.0"
+
 static PyObject *init_builtins = NULL;
 
 
@@ -1068,7 +1070,7 @@ fat_init_builtins(void)
 PyMODINIT_FUNC
 PyInit_fat(void)
 {
-    PyObject *mod;
+    PyObject *mod, *value;
 
     if (fat_init_builtins() < 0)
         return NULL;
@@ -1087,6 +1089,12 @@ PyInit_fat(void)
         return NULL;
 
     if (PyType_Ready(&GuardBuiltins_Type) < 0)
+        return NULL;
+
+    value = PyUnicode_FromString(VERSION);
+    if (value == NULL)
+        return NULL;
+    if (PyModule_AddObject(mod, "__version__", value) < 0)
         return NULL;
 
     Py_INCREF(&PyFuncGuard_Type);
