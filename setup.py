@@ -32,7 +32,7 @@ import sys
 # Debug pytracemalloc
 DEBUG = False
 
-VERSION = '0.0'
+VERSION = '0.1'
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',
