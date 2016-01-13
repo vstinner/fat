@@ -381,8 +381,15 @@ typedef struct {
     PyObject *dict;
     size_t dict_version;
     Py_ssize_t npair;
-    GuardDictPair pairs[1];
+    GuardDictPair *pairs;
 } GuardDictObject;
+
+static void
+guard_dict_pair_dealloc(GuardDictPair *pair)
+{
+    Py_CLEAR(pair->key);
+    Py_CLEAR(pair->value);
+}
 
 static void
 guard_dict_clear(GuardDictObject *guard)
@@ -390,10 +397,11 @@ guard_dict_clear(GuardDictObject *guard)
     Py_ssize_t i;
 
     Py_CLEAR(guard->dict);
-    for (i=0; i < guard->npair; i++) {
-        Py_CLEAR(guard->pairs[i].key);
-        Py_CLEAR(guard->pairs[i].value);
-    }
+    for (i=0; i < guard->npair; i++)
+        guard_dict_pair_dealloc(&guard->pairs[i]);
+    guard->npair = 0;
+    PyMem_Free(guard->pairs);
+    guard->pairs = NULL;
 }
 
 static int
@@ -520,6 +528,7 @@ guard_dict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->dict = NULL;
     self->dict_version = 0;
     self->npair = 0;
+    self->pairs = NULL;
     return op;
 }
 
@@ -527,7 +536,8 @@ static int
 guard_dict_init_keys(PyObject *op, PyObject *dict, PyObject *keys)
 {
     GuardDictObject *self = (GuardDictObject *)op;
-    Py_ssize_t i;
+    GuardDictPair *pairs = NULL;
+    Py_ssize_t nkeys, i, npair = 0;
 
     /* FIXME: PyDict_CheckExact(dict)? */
 
@@ -538,19 +548,24 @@ guard_dict_init_keys(PyObject *op, PyObject *dict, PyObject *keys)
         goto error;
     }
 
-    /* FIXME: support multiple pairs */
-    if (PyTuple_GET_SIZE(keys) != 1) {
+    nkeys = PyTuple_GET_SIZE(keys);
+    if (!nkeys) {
         PyErr_SetString(PyExc_TypeError,
-                        "only support a single dictionary key");
+                        "keys must at least contain one key");
         goto error;
     }
 
-    self->npair = 0;
-    Py_INCREF(dict);
-    self->dict = dict;
-    self->dict_version = (((PyDictObject*)(dict))->ma_version);
+    if (nkeys >  PY_SSIZE_T_MAX / (Py_ssize_t)sizeof(GuardDictPair)) {
+        PyErr_NoMemory();
+        goto error;
+    }
+    pairs = PyMem_Malloc(sizeof(GuardDictPair) * nkeys);
+    if (pairs == NULL) {
+        PyErr_NoMemory();
+        goto error;
+    }
 
-    for (i=0; i < 1; i++) {
+    for (i=0; i < nkeys; i++) {
         PyObject *key, *value;
 
         key = PyTuple_GET_ITEM(keys, i);
@@ -571,17 +586,24 @@ guard_dict_init_keys(PyObject *op, PyObject *dict, PyObject *keys)
         }
 
         Py_INCREF(key);
-        self->pairs[i].key = key;
-        self->pairs[i].value = value;
-        self->npair = i+1;
+        pairs[i].key = key;
+        pairs[i].value = value;
+        npair = i + 1;
     }
 
+    guard_dict_clear(self);
+
+    Py_INCREF(dict);
+    self->dict = dict;
+    self->dict_version = (((PyDictObject*)(dict))->ma_version);
+    self->npair = npair;
+    self->pairs = pairs;
     return 0;
 
 error:
-    /* FIXME: don't clear attributes but only set them when everything is
-      fine? */
-    guard_dict_clear(self);
+    for (i=0; i < npair; i++)
+        guard_dict_pair_dealloc(&pairs[i]);
+    PyMem_Free(pairs);
     return -1;
 }
 
