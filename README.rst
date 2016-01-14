@@ -2,12 +2,12 @@
 fat module
 **********
 
-The ``fat`` module implements fast guards. The ``fatoptimizer`` optimizer
-specialize functions. It uses ``fat`` guards to only use the specialize
-bytecode under some conditions.
+The ``fat`` module is Python extension module (written in C) implementing fast
+guards. The ``fatoptimizer`` optimizer uses `fat`` guards to specialize
+functions and only the specialize bytecode under some conditions.
 
-The ``fat`` module is the runtime part of the optimizer. It is required to run
-optimized code. The optimizer is the ``fatoptimizer`` module.
+The ``fat`` module is required to run code optimized by ``fatoptimizer`` if
+at least one function is specialized.
 
 * `fat documentation
   <https://fatoptimizer.readthedocs.org/en/latest/fat.html>`_
@@ -17,3 +17,5 @@ optimized code. The optimizer is the ``fatoptimizer`` module.
   <https://pypi.python.org/pypi/fat>`_
 * `fatoptimizer documentation
   <https://fatoptimizer.readthedocs.org/>`_
+
+The ``fat`` module requires a Python 3.6 patched with PEP 510 patch.
