@@ -68,7 +68,7 @@ def main():
         'license': 'MIT license',
         'description': 'Static optimizer specializing functions with guards',
         'long_description': long_description,
-        "url": "https://github.com/haypo/fat",
+        "url": "https://fatoptimizer.readthedocs.org/en/latest/fat.html",
         'author': 'Victor Stinner',
         'author_email': 'victor.stinner@gmail.com',
         'ext_modules': [ext],
