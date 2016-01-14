@@ -1,5 +1,6 @@
 include COPYING
 include MANIFEST.in
 include README.rst
+include TODO.rst
 include runtests.sh
 include test_fat.py
