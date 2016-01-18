@@ -2,7 +2,7 @@
 #include "frameobject.h"
 #include "structmember.h"
 
-#define VERSION "0.1"
+#define VERSION "0.2"
 
 static PyObject *init_builtins = NULL;
 

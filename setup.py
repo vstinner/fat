@@ -18,7 +18,7 @@
 #
 # After the release:
 #
-#  - set version to n+1
+#  - set version to n+1 in setup.py and fat.c
 #  - git commit
 #  - git push
 
@@ -32,7 +32,7 @@ import sys
 # Debug pytracemalloc
 DEBUG = False
 
-VERSION = '0.1'
+VERSION = '0.2'
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',
