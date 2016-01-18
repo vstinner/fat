@@ -1,12 +1,10 @@
 # Disable the AST optimizer on this module
 __astoptimizer__ = {'enabled': False}
 
-from test import support
 import builtins
 import fat
 import importlib
 import os.path
-import pickle
 import textwrap
 import unittest
 
@@ -725,12 +723,6 @@ class SpecializeTests(BaseTests):
         with self.assertRaises(TypeError):
             fat.specialize(func, func2, ['xxx'])
 
-    def test_add_arg_type_guard_error(self):
-        with self.assertRaises(TypeError) as cm:
-            fat.GuardArgType(0, "abc")
-        self.assertEqual(str(cm.exception),
-                         'must be type, not str')
-
     def test_add_func_guard_error(self):
         with self.assertRaises(TypeError) as cm:
             fat.GuardFunc()
@@ -833,40 +825,6 @@ class MiscTests(unittest.TestCase):
 
         code3 = fat.replace_consts(code, {'unknown': 7})
         self.assertEqual(code3.co_consts, (None, 3))
-
-    # FIXME: move the test to PEP 510 patch
-    # FIXME: does this test make sense at all? Pickle emits a 'LOAD_GLOBAL'
-    # instruction, it doesn't serialize code objects
-    def test_pickle(self):
-        # define functions using exec() to not create nested functions
-        # with '<locals>' in their qualified name
-        code = textwrap.dedent("""
-            def func():
-                return "slow"
-
-            def fast_func():
-                return "fast"
-        """)
-        ns = {}
-        exec(code, ns, ns)
-        func = ns['func']
-        fast_func = ns['func']
-
-        guards = guard_dict(ns, 'key')
-        fat.specialize(func, fast_func.__code__, guards)
-        self.assertEqual(len(fat.get_specialized(func)), 1)
-
-        # inject symbols in global variables
-        globals()['func'] = func
-        globals()['fast_func'] = func
-
-        for proto in range(pickle.HIGHEST_PROTOCOL):
-            serialized = pickle.dumps(func, proto)
-
-            func2 = pickle.loads(serialized)
-            self.assertIs(func2, func)
-
-        del globals()['func'], globals()['fast_func']
 
     def test_version(self):
         filename = os.path.join(os.path.dirname(__file__), 'setup.py')
