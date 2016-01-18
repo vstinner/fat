@@ -3,7 +3,6 @@ __astoptimizer__ = {'enabled': False}
 
 import builtins
 import fat
-import importlib
 import os.path
 import textwrap
 import unittest
@@ -37,16 +36,16 @@ class GuardsTests(unittest.TestCase):
         self.assertEqual(guard(), 2)
 
     def test_globals(self):
-        guard = fat.GuardGlobals(('key',))
+        guard = fat.guard_globals(('key',))
         self.assertIs(guard.dict, globals())
         self.assertEqual(guard.keys, ('key',))
 
         # not enough parameters
-        self.assertRaises(TypeError, fat.GuardGlobals)
+        self.assertRaises(TypeError, fat.guard_globals)
 
         # wrong types
-        self.assertRaises(TypeError, fat.GuardGlobals, 123)
-        self.assertRaises(TypeError, fat.GuardGlobals, (123,))
+        self.assertRaises(TypeError, fat.guard_globals, 123)
+        self.assertRaises(TypeError, fat.guard_globals, (123,))
 
     def test_guard_func(self):
         def func():
@@ -315,7 +314,7 @@ class BehaviourTests(unittest.TestCase):
                 return "fast: %s" % filename.endswith('.py')
 
             fat.specialize(func, fast,
-                             [fat.GuardGlobals(('is_python',)),
+                             [fat.guard_globals(('is_python',)),
                               fat.GuardFunc(is_python)])
         """)
         ns = self._exec(code)
@@ -784,10 +783,10 @@ class SpecializeTests(BaseTests):
         def func2():
             pass
 
-        self.assertRaises(TypeError, fat.GuardTypeDict)
-        self.assertRaises(TypeError, fat.GuardTypeDict, str)
-        self.assertRaises(TypeError, fat.GuardTypeDict, 123, ('attr',))
-        self.assertRaises(TypeError, fat.GuardTypeDict, 123, (123,))
+        self.assertRaises(TypeError, fat.guard_type_dict)
+        self.assertRaises(TypeError, fat.guard_type_dict, str)
+        self.assertRaises(TypeError, fat.guard_type_dict, 123, ('attr',))
+        self.assertRaises(TypeError, fat.guard_type_dict, 123, (123,))
 
     def test_add_arg_type_guard_error(self):
         # missing 'arg_index' and/or 'type' keys
@@ -827,10 +826,8 @@ class MiscTests(unittest.TestCase):
         self.assertEqual(code3.co_consts, (None, 3))
 
     def test_version(self):
-        filename = os.path.join(os.path.dirname(__file__), 'setup.py')
-        loader = importlib.machinery.SourceFileLoader('setup', filename)
-        setup_py = loader.load_module()
-        self.assertEqual(fat.__version__, setup_py.VERSION)
+        import setup
+        self.assertEqual(fat.__version__, setup.VERSION)
 
 
 

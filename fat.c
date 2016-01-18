@@ -855,7 +855,7 @@ fat_guard_globals(PyObject *self, PyObject *args)
 {
     PyObject *globals, *keys;
 
-    if (!PyArg_ParseTuple(args, "O", &keys))
+    if (!PyArg_ParseTuple(args, "O:guard_globals", &keys))
         return NULL;
 
     globals = PyEval_GetGlobals();
@@ -866,7 +866,9 @@ fat_guard_globals(PyObject *self, PyObject *args)
 }
 
 PyDoc_STRVAR(guard_globals_doc,
-"GuardGlobals(keys) -> GuardDict");
+"guard_globals(keys) -> GuardDict\n"
+"\n"
+"Guard on globals()[key] for all keys.");
 
 
 static PyObject*
@@ -874,7 +876,7 @@ fat_guard_type_dict(PyObject *self, PyObject *args)
 {
     PyObject *type, *type_dict, *keys;
 
-    if (!PyArg_ParseTuple(args, "O!O", &PyType_Type, &type, &keys))
+    if (!PyArg_ParseTuple(args, "O!O:guard_type_dict", &PyType_Type, &type, &keys))
         return NULL;
 
     type_dict = ((PyTypeObject*)type)->tp_dict;
@@ -884,7 +886,9 @@ fat_guard_type_dict(PyObject *self, PyObject *args)
 }
 
 PyDoc_STRVAR(guard_type_dict_doc,
-"GuardTypeDict(keys) -> GuardDict");
+"guard_type_dict(attrs) -> GuardDict\n"
+"\n"
+"Guard on type.attr (type.__dict__[attr]) for all attrs.");
 
 
 static PyObject*
@@ -1013,9 +1017,9 @@ static struct PyMethodDef fat_methods[] = {
      get_specialized_doc},
     {"replace_consts", (PyCFunction)fat_replace_consts, METH_VARARGS,
      patch_constants_doc},
-    {"GuardGlobals", (PyCFunction)fat_guard_globals, METH_VARARGS,
+    {"guard_globals", (PyCFunction)fat_guard_globals, METH_VARARGS,
      guard_globals_doc},
-    {"GuardTypeDict", (PyCFunction)fat_guard_type_dict, METH_VARARGS,
+    {"guard_type_dict", (PyCFunction)fat_guard_type_dict, METH_VARARGS,
      guard_type_dict_doc},
     {NULL, NULL}                /* sentinel */
 };
