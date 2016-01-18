@@ -17,5 +17,7 @@ at least one function is specialized.
   <https://pypi.python.org/pypi/fat>`_
 * `fatoptimizer documentation
   <https://fatoptimizer.readthedocs.org/>`_
+* `FAT Python
+  <https://faster-cpython.readthedocs.org/fat_python.html>`_
 
 The ``fat`` module requires a Python 3.6 patched with PEP 510 patch.
