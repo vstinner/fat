@@ -206,11 +206,15 @@ class GetSpecializedTests(BaseTests):
 
         def func2():
             return 'fast'
-        guards = [fat.GuardBuiltins(('chr',))]
+
+        guard = fat.GuardBuiltins(('chr',))
+        guards = [guard]
         fat.specialize(func, func2, guards)
 
         self.check_specialized(func,
                                (func2.__code__, guards))
+
+        self.assertEqual(guard(), 0)
 
     def test_func_guard(self):
         def inlined():
@@ -416,13 +420,19 @@ class BehaviourTests(unittest.TestCase):
             def fast():
                 return "fast: A"
 
-            fat.specialize(func, fast, [fat.GuardBuiltins(('chr',))])
+            guard = fat.GuardBuiltins(('chr',))
+            fat.specialize(func, fast, [guard])
         """)
 
         ns = self._exec(code)
         func = ns['func']
+        guard = ns['guard']
+
         # chr() was replaced: the specialization must be ignored
         self.assertEqual(len(fat.get_specialized(func)), 0)
+
+        # guard init failed: it must always fail
+        self.assertEqual(guard(), 2)
 
     def test_builtin_guard_global_exists(self):
         code = textwrap.dedent("""
@@ -436,14 +446,20 @@ class BehaviourTests(unittest.TestCase):
             def fast():
                 return "fast: A"
 
-            fat.specialize(func, fast, [fat.GuardBuiltins(('chr',))])
+            guard = fat.GuardBuiltins(('chr',))
+            fat.specialize(func, fast, [guard])
         """)
 
         ns = self._exec(code)
         func = ns['func']
+        guard = ns['guard']
+
         # chr() is overriden in the global namespace: the specialization must
         # be ignored
         self.assertEqual(len(fat.get_specialized(func)), 0)
+
+        # guard init failed: it must always fail
+        self.assertEqual(guard(), 2)
 
 
 class MethodTests(unittest.TestCase):

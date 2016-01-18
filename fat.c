@@ -699,6 +699,7 @@ static PyTypeObject GuardDict_Type = {
 
 typedef struct {
     GuardDictObject base;
+    int init_failed;
     PyObject *extra_guard;
 } GuardBuiltinsObject;
 
@@ -726,6 +727,7 @@ guard_builtins_init_guard(PyObject *self, PyObject *func)
             if (guard->base.pairs[i].value != init_value) {
                 /* builtin was modified since Python initialization:
                    don't specialize the function */
+                guard->init_failed = 1;
                 return 1;
             }
         }
@@ -736,9 +738,12 @@ guard_builtins_init_guard(PyObject *self, PyObject *func)
     for (i=0; i < globals_guard->npair; i++) {
         if (globals_guard->pairs[i].value != NULL) {
             /* if name already exists in global, the guard must fail */
+            guard->init_failed = 1;
             return 1;
         }
     }
+
+    guard->init_failed = 0;
     return 0;
 }
 
@@ -748,6 +753,14 @@ guard_builtins_check(PyObject *self, PyObject **stack, int na, int nk)
     GuardBuiltinsObject *guard = (GuardBuiltinsObject *)self;
     PyFuncGuardObject *extra_guard = (PyFuncGuardObject *)guard->extra_guard;
     int res;
+
+    if (guard->init_failed == -1) {
+        guard_builtins_init_guard(self, NULL);
+        assert(guard->init_failed != -1);
+    }
+
+    if (guard->init_failed)
+        return 2;
 
     res = guard_dict_check(self, stack, na, nk);
     if (res)
@@ -769,6 +782,7 @@ guard_builtins_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self = (GuardBuiltinsObject *)op;
     self->base.base.init = guard_builtins_init_guard;
     self->base.base.check = guard_builtins_check;
+    self->init_failed = -1;
 
     return op;
 }
