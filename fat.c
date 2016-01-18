@@ -97,7 +97,7 @@ guard_arg_type_init(PyObject *op, PyObject *args, PyObject *kwargs)
     PyObject** arg_types = NULL;
     Py_ssize_t n, i;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO", keywords,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO:GuardArgType", keywords,
                                      &arg_index, &arg_types_obj))
         return -1;
 
@@ -290,7 +290,7 @@ guard_func_init(PyObject *op, PyObject *args, PyObject *kwargs)
     PyObject *func;
     PyObject *code;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", keywords,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:GuardFunc", keywords,
                                      &func))
         return -1;
 
@@ -615,7 +615,7 @@ guard_dict_init(PyObject *op, PyObject *args, PyObject *kwargs)
     static char *keywords[] = {"dict", "keys", NULL};
     PyObject *dict, *keys;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O", keywords,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O:GuardDict", keywords,
                                      &PyDict_Type, &dict, &keys))
         return -1;
 
@@ -794,7 +794,7 @@ guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
     PyObject *builtins, *globals, *keys;
     PyObject *extra_guard;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", keywords,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:GuardBuiltins", keywords,
                                      &keys))
         return -1;
 
