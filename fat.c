@@ -261,6 +261,7 @@ guard_func_traverse(GuardFuncObject *self, visitproc visit, void *arg)
     GuardFuncObject *guard = (GuardFuncObject *)self;
 
     Py_VISIT(guard->func);
+    Py_VISIT(guard->code);
     return 0;
 }
 
@@ -820,6 +821,15 @@ guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
     return 0;
 }
 
+static int
+guard_builtins_traverse(GuardBuiltinsObject *self, visitproc visit, void *arg)
+{
+    int res = guard_dict_traverse((GuardDictObject *)self, visit, arg);
+    if (res)
+        return res;
+    return guard_dict_traverse((GuardDictObject *)self->extra_guard, visit, arg);
+}
+
 
 static PyTypeObject GuardBuiltins_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
@@ -843,7 +853,7 @@ static PyTypeObject GuardBuiltins_Type = {
     0,                                          /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                         /* tp_flags */
     0,                                          /* tp_doc */
-    0,                                          /* tp_traverse */
+    (traverseproc)guard_builtins_traverse,      /* tp_traverse */
     0,                                          /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
