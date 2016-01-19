@@ -791,6 +791,9 @@ guard_builtins_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->base.base.check = guard_builtins_check;
     self->init_failed = -1;
 
+    /* object allocator must initialize the structure to zeros */
+    assert(self->extra_guard == NULL);
+
     return op;
 }
 
@@ -833,7 +836,8 @@ guard_builtins_traverse(GuardBuiltinsObject *self, visitproc visit, void *arg)
     int res = guard_dict_traverse((GuardDictObject *)self, visit, arg);
     if (res)
         return res;
-    return guard_dict_traverse((GuardDictObject *)self->extra_guard, visit, arg);
+    Py_VISIT(self->extra_guard);
+    return 0;
 }
 
 
