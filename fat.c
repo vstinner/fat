@@ -706,8 +706,8 @@ typedef struct {
 static void
 guard_builtins_dealloc(GuardBuiltinsObject *self)
 {
-    guard_dict_dealloc(&self->base);
     Py_CLEAR(self->extra_guard);
+    guard_dict_dealloc(&self->base);
 }
 
 static int
