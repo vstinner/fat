@@ -53,6 +53,8 @@ guard_arg_type_dealloc(GuardArgTypeObject *self)
     for (i=0; i < guard->nb_arg_type; i++)
         Py_CLEAR(guard->arg_types[i]);
     PyMem_Free(guard->arg_types);
+
+    PyFuncGuard_Type.tp_dealloc((PyObject *)self);
 }
 
 static int
@@ -200,7 +202,7 @@ static PyTypeObject GuardArgType_Type = {
     0,                                          /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                         /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
     0,                                          /* tp_doc */
     (traverseproc)guard_arg_type_traverse,      /* tp_traverse */
     0,                                          /* tp_clear */
@@ -253,6 +255,8 @@ guard_func_dealloc(GuardFuncObject *self)
 
     Py_XDECREF(guard->func);
     Py_XDECREF(guard->code);
+
+    PyFuncGuard_Type.tp_dealloc((PyObject *)self);
 }
 
 static int
@@ -349,7 +353,7 @@ static PyTypeObject GuardFunc_Type = {
     0,                                          /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                         /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
     0,                                          /* tp_doc */
     (traverseproc)guard_func_traverse,          /* tp_traverse */
     0,                                          /* tp_clear */
@@ -501,6 +505,8 @@ static void
 guard_dict_dealloc(GuardDictObject *self)
 {
     guard_dict_clear(self);
+
+    PyFuncGuard_Type.tp_dealloc((PyObject *)self);
 }
 
 static int
@@ -673,7 +679,7 @@ static PyTypeObject GuardDict_Type = {
     0,                                          /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                         /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
     0,                                          /* tp_doc */
     (traverseproc)guard_dict_traverse,          /* tp_traverse */
     0,                                          /* tp_clear */
@@ -851,7 +857,7 @@ static PyTypeObject GuardBuiltins_Type = {
     0,                                          /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                         /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
     0,                                          /* tp_doc */
     (traverseproc)guard_builtins_traverse,      /* tp_traverse */
     0,                                          /* tp_clear */
