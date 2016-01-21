@@ -683,16 +683,14 @@ guard_globals_check(PyObject *self, PyObject **stack, int na, int nk)
     PyFrameObject *frame;
 
     tstate = PyThreadState_GET();
-    if (tstate == NULL)
-        return 2;
+    assert(tstate != NULL);
 
     frame = tstate->frame;
-    if (frame == NULL)
-        return 2;
+    assert(frame != NULL);
 
     /* If the frame globals dictionary is different than the frame globals
      * dictionary used to create the guard, the guard check fails */
-    if (frame->f_globals != guard->dict)
+    if (unlikely(frame->f_globals != guard->dict))
         return 2;
 
     return guard_dict_check(self, stack, na, nk);
@@ -866,8 +864,6 @@ guard_builtins_check(PyObject *self, PyObject **stack, int na, int nk)
     res = guard_dict_check(self, stack, na, nk);
     if (unlikely(res))
         return res;
-
-    /* Belowed: inline code of guard_globals_check() */
 
     /* If the frame globals dictionary is different than the frame globals
      * dictionary used to create the guard, the guard check fails */
