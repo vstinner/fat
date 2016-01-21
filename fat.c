@@ -856,21 +856,21 @@ guard_builtins_check(PyObject *self, PyObject **stack, int na, int nk)
     frame = tstate->frame;
     assert(frame != NULL);
 
-    /* If the builtin dictionary of the current frame is different than the
-     * builtin dictionary used to create the guard, the guard check fails */
-    if (unlikely(frame->f_builtins != guard->base.dict))
-        return 2;
-
-    res = guard_dict_check(self, stack, na, nk);
-    if (unlikely(res))
-        return res;
-
     /* If the frame globals dictionary is different than the frame globals
      * dictionary used to create the guard, the guard check fails */
     if (unlikely(frame->f_globals != guard_globals->dict))
         return 2;
 
-    return guard_dict_check(guard->guard_globals, stack, na, nk);
+    /* If the builtin dictionary of the current frame is different than the
+     * builtin dictionary used to create the guard, the guard check fails */
+    if (unlikely(frame->f_builtins != guard->base.dict))
+        return 2;
+
+    res = guard_dict_check(guard->guard_globals, stack, na, nk);
+    if (unlikely(res))
+        return res;
+
+    return guard_dict_check(self, stack, na, nk);
 }
 
 static PyObject *
