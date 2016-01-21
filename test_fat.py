@@ -36,16 +36,16 @@ class GuardsTests(unittest.TestCase):
         self.assertEqual(guard(), 2)
 
     def test_globals(self):
-        guard = fat.guard_globals(('key',))
+        guard = fat.GuardGlobals(('key',))
         self.assertIs(guard.dict, globals())
         self.assertEqual(guard.keys, ('key',))
 
         # not enough parameters
-        self.assertRaises(TypeError, fat.guard_globals)
+        self.assertRaises(TypeError, fat.GuardGlobals)
 
         # wrong types
-        self.assertRaises(TypeError, fat.guard_globals, 123)
-        self.assertRaises(TypeError, fat.guard_globals, (123,))
+        self.assertRaises(TypeError, fat.GuardGlobals, 123)
+        self.assertRaises(TypeError, fat.GuardGlobals, (123,))
 
     def test_guard_func(self):
         def func():
@@ -282,16 +282,28 @@ class BehaviourTests(unittest.TestCase):
 
     def test_builtin_len_mock_globals(self):
         ns, func = self.specialized_len()
-        self.assertEqual(func(), 'fast: 3')
+
+        def call():
+            ns.pop('res', None)
+            exec("res = func()", ns)
+            return ns['res']
+
+        self.assertEqual(call(), 'fast: 3')
 
         # mock len() in the function namespace
         ns['len'] = lambda obj: "mock"
 
-        self.assertEqual(func(), 'mock')
+        self.assertEqual(call(), 'mock')
 
     def test_builtin_len_mock_builtin(self):
         ns, func = self.specialized_len()
-        self.assertEqual(func(), 'fast: 3')
+
+        def call():
+            ns.pop('res', None)
+            exec("res = func()", ns)
+            return ns['res']
+
+        self.assertEqual(call(), 'fast: 3')
 
         len = builtins.len
         try:
@@ -299,7 +311,7 @@ class BehaviourTests(unittest.TestCase):
             ns['__builtins__']['len'] = lambda obj: 'mock'
 
             #builtins.__dict__['len'] = lambda obj: 'mock'
-            res = func()
+            res = call()
         finally:
             builtins.len = len
         self.assertEqual(res, 'mock')
@@ -318,7 +330,7 @@ class BehaviourTests(unittest.TestCase):
                 return "fast: %s" % filename.endswith('.py')
 
             fat.specialize(func, fast,
-                             [fat.guard_globals(('is_python',)),
+                             [fat.GuardGlobals(('is_python',)),
                               fat.GuardFunc(is_python)])
         """)
         ns = self._exec(code)
@@ -327,30 +339,40 @@ class BehaviourTests(unittest.TestCase):
     def test_inline_mock_globals(self):
         ns, func = self.inline()
 
-        self.assertEqual(func('abc'), 'fast: False')
-        self.assertEqual(func('abc.py'), 'fast: True')
+        def call(arg):
+            ns.pop('res', None)
+            exec("res = func(%r)" % arg, ns)
+            return ns['res']
+
+        self.assertEqual(call('abc'), 'fast: False')
+        self.assertEqual(call('abc.py'), 'fast: True')
 
         # modify is_python() in the module namespace
         def is_python(filename):
             return "mock: %s" % filename
         ns['is_python'] = is_python
 
-        self.assertEqual(func('abc'), 'mock: abc')
-        self.assertEqual(func('abc.py'), 'mock: abc.py')
+        self.assertEqual(call('abc'), 'mock: abc')
+        self.assertEqual(call('abc.py'), 'mock: abc.py')
 
     def test_inline_modify_code(self):
         ns, func = self.inline()
 
-        self.assertEqual(func('abc'), 'fast: False')
-        self.assertEqual(func('abc.py'), 'fast: True')
+        def call(arg):
+            ns.pop('res', None)
+            exec("res = func(%r)" % arg, ns)
+            return ns['res']
+
+        self.assertEqual(call('abc'), 'fast: False')
+        self.assertEqual(call('abc.py'), 'fast: True')
 
         # modify is_python() code
         def mock_is_python(filename):
             return 'mock: %s' % filename
         ns['is_python'].__code__ = mock_is_python.__code__
 
-        self.assertEqual(func('abc'), 'mock: abc')
-        self.assertEqual(func('abc.py'), 'mock: abc.py')
+        self.assertEqual(call('abc'), 'mock: abc')
+        self.assertEqual(call('abc.py'), 'mock: abc.py')
 
     def test_arg_type_int(self):
         def func(obj):

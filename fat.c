@@ -702,6 +702,106 @@ static PyTypeObject GuardDict_Type = {
 };
 
 
+/* GuardGlobals */
+
+static int
+guard_globals_check(PyObject *self, PyObject **stack, int na, int nk)
+{
+    GuardDictObject *guard = (GuardDictObject *)self;
+    PyObject *globals;
+
+    globals = PyEval_GetGlobals();
+    if (globals == NULL)
+        return 2;
+
+    if (globals != guard->dict)
+        return 2;
+
+    return guard_dict_check(self, stack, na, nk);
+}
+
+static PyObject *
+guard_globals_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    PyObject *op;
+    GuardDictObject *self;
+
+    op = GuardDict_Type.tp_new(type, args, kwds);
+    if (op == NULL)
+        return NULL;
+
+    self = (GuardDictObject *)op;
+    self->base.check = guard_globals_check;
+
+    return op;
+}
+
+static int
+guard_globals_init(PyObject *op, PyObject *args, PyObject *kwargs)
+{
+    static char *keywords[] = {"keys", NULL};
+    PyObject *globals, *keys;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:GuardGlobals", keywords,
+                                     &keys))
+        return -1;
+
+    globals = PyEval_GetGlobals();
+    if (globals == NULL)
+        return -1;
+
+    return guard_dict_init_keys(op, globals, keys);
+}
+
+
+PyDoc_STRVAR(guard_globals_doc,
+"GuardGlobals(keys)\n"
+"\n"
+"Guard on globals()[key] for all keys.");
+
+static PyTypeObject GuardGlobals_Type = {
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    "fat.GuardGlobals",
+    sizeof(GuardDictObject),
+    0,
+    0,                                          /* tp_dealloc */
+    0,                                          /* tp_print */
+    0,                                          /* tp_getattr */
+    0,                                          /* tp_setattr */
+    0,                                          /* tp_reserved */
+    0,                                          /* tp_repr */
+    0,                                          /* tp_as_number */
+    0,                                          /* tp_as_sequence */
+    0,                                          /* tp_as_mapping */
+    0,                                          /* tp_hash */
+    0,                                          /* tp_call */
+    0,                                          /* tp_str */
+    0,                                          /* tp_getattro */
+    0,                                          /* tp_setattro */
+    0,                                          /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,    /* tp_flags */
+    guard_globals_doc,                          /* tp_doc */
+    (traverseproc)guard_dict_traverse,          /* tp_traverse */
+    0,                                          /* tp_clear */
+    0,                                          /* tp_richcompare */
+    0,                                          /* tp_weaklistoffset */
+    0,                                          /* tp_iter */
+    0,                                          /* tp_iternext */
+    0,                                          /* tp_methods */
+    0,                                          /* tp_members */
+    0,                                          /* tp_getset */
+    &GuardDict_Type,                            /* tp_base */
+    0,                                          /* tp_dict */
+    0,                                          /* tp_descr_get */
+    0,                                          /* tp_descr_set */
+    0,                                          /* tp_dictoffset */
+    guard_globals_init,                        /* tp_init */
+    0,                                          /* tp_alloc */
+    guard_globals_new,                         /* tp_new */
+    0,                                          /* tp_free */
+};
+
+
 /* GuardBuiltins */
 
 typedef struct {
@@ -801,7 +901,7 @@ static int
 guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
 {
     static char *keywords[] = {"keys", NULL};
-    PyObject *builtins, *globals, *keys;
+    PyObject *builtins, *keys;
     PyObject *extra_guard;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:GuardBuiltins", keywords,
@@ -812,11 +912,7 @@ guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
     if (builtins == NULL)
         return -1;
 
-    globals = PyEval_GetGlobals();
-    if (globals == NULL)
-        return -1;
-
-    extra_guard = PyObject_CallFunction((PyObject *)&GuardDict_Type, "OO", globals, keys);
+    extra_guard = PyObject_CallFunctionObjArgs((PyObject *)&GuardGlobals_Type, keys, NULL);
     if (extra_guard == NULL)
         return -1;
 
@@ -884,26 +980,7 @@ static PyTypeObject GuardBuiltins_Type = {
 };
 
 
-static PyObject*
-fat_guard_globals(PyObject *self, PyObject *args)
-{
-    PyObject *globals, *keys;
-
-    if (!PyArg_ParseTuple(args, "O:guard_globals", &keys))
-        return NULL;
-
-    globals = PyEval_GetGlobals();
-    if (globals == NULL)
-        return NULL;
-
-    return PyObject_CallFunction((PyObject *)&GuardDict_Type, "OO", globals, keys);
-}
-
-PyDoc_STRVAR(guard_globals_doc,
-"guard_globals(keys) -> GuardDict\n"
-"\n"
-"Guard on globals()[key] for all keys.");
-
+/* Functions */
 
 static PyObject*
 fat_guard_type_dict(PyObject *self, PyObject *args)
@@ -1051,8 +1128,6 @@ static struct PyMethodDef fat_methods[] = {
      get_specialized_doc},
     {"replace_consts", (PyCFunction)fat_replace_consts, METH_VARARGS,
      patch_constants_doc},
-    {"guard_globals", (PyCFunction)fat_guard_globals, METH_VARARGS,
-     guard_globals_doc},
     {"guard_type_dict", (PyCFunction)fat_guard_type_dict, METH_VARARGS,
      guard_type_dict_doc},
     {NULL, NULL}                /* sentinel */
@@ -1126,6 +1201,9 @@ PyInit_fat(void)
     if (PyType_Ready(&GuardDict_Type) < 0)
         return NULL;
 
+    if (PyType_Ready(&GuardGlobals_Type) < 0)
+        return NULL;
+
     if (PyType_Ready(&GuardBuiltins_Type) < 0)
         return NULL;
 
@@ -1153,6 +1231,11 @@ PyInit_fat(void)
     Py_INCREF(&GuardDict_Type);
     if (PyModule_AddObject(mod, "GuardDict",
                            (PyObject *)&GuardDict_Type) < 0)
+        return NULL;
+
+    Py_INCREF(&GuardGlobals_Type);
+    if (PyModule_AddObject(mod, "GuardGlobals",
+                           (PyObject *)&GuardGlobals_Type) < 0)
         return NULL;
 
     Py_INCREF(&GuardBuiltins_Type);
