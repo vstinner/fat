@@ -392,7 +392,7 @@ typedef struct {
 typedef struct {
     PyFuncGuardObject base;
     PyObject *dict;
-    size_t dict_version;
+    PY_UINT64_T dict_version;
     Py_ssize_t npair;
     GuardDictPair *pairs;
 } GuardDictObject;
@@ -449,7 +449,7 @@ static int
 guard_dict_check(PyObject *self, PyObject **stack, int na, int nk)
 {
     GuardDictObject *guard = (GuardDictObject *)self;
-    size_t dict_version;
+    PY_UINT64_T dict_version;
     PyObject *dict;
     Py_ssize_t i;
 
