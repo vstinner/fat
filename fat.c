@@ -704,13 +704,31 @@ static PyTypeObject GuardDict_Type = {
 
 /* GuardGlobals */
 
+static PyObject*
+fat_get_globals(void)
+{
+    PyThreadState *tstate;
+    PyFrameObject *frame;
+
+    /* FIXME: use _PyThreadState_UncheckedGet(), need to rebase fatpython */
+    tstate = PyThreadState_GET();
+    if (tstate == NULL)
+        return NULL;
+
+    frame = tstate->frame;
+    if (frame == NULL)
+        return NULL;
+
+    return frame->f_globals;
+}
+
 static int
 guard_globals_check(PyObject *self, PyObject **stack, int na, int nk)
 {
     GuardDictObject *guard = (GuardDictObject *)self;
     PyObject *globals;
 
-    globals = PyEval_GetGlobals();
+    globals = fat_get_globals();
     if (globals == NULL)
         return 2;
 
@@ -746,7 +764,7 @@ guard_globals_init(PyObject *op, PyObject *args, PyObject *kwargs)
                                      &keys))
         return -1;
 
-    globals = PyEval_GetGlobals();
+    globals = fat_get_globals();
     if (globals == NULL)
         return -1;
 
