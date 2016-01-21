@@ -6,6 +6,12 @@
 
 static PyObject *init_builtins = NULL;
 
+#ifdef __GNUC__
+#  define unlikely(x) __builtin_expect(!!(x), 0)
+#else
+#  define unlikely(x) x
+#endif
+
 
 /* GuardArgType */
 
@@ -439,45 +445,6 @@ check_dict_pair_guard(PyObject *dict, GuardDictPair *pair)
     return 2;
 }
 
-static PyObject*
-fat_get_builtins_dict(int raise)
-{
-    PyThreadState* tstate;
-    PyObject *builtins;
-    PyFrameObject *frame;
-
-    tstate = PyThreadState_Get();
-    if (tstate == NULL) {
-        if (raise)
-            PyErr_SetString(PyExc_RuntimeError,
-                            "unable to get the current Python thread state");
-        return NULL;
-    }
-
-    frame = tstate->frame;
-    if (frame == NULL) {
-        if (raise)
-            PyErr_SetString(PyExc_RuntimeError,
-                            "the current Python thread state has no frame");
-        return NULL;
-    }
-
-    builtins = frame->f_builtins;
-    if (builtins == NULL) {
-        if (raise)
-            PyErr_SetString(PyExc_RuntimeError,
-                            "frame has no builtins");
-        return NULL;
-    }
-    if (!PyDict_Check(builtins)) {
-        if (raise)
-            PyErr_SetString(PyExc_RuntimeError,
-                            "frame builtins is not a dict");
-        return NULL;
-    }
-    return builtins;
-}
-
 static int
 guard_dict_check(PyObject *self, PyObject **stack, int na, int nk)
 {
@@ -490,7 +457,7 @@ guard_dict_check(PyObject *self, PyObject **stack, int na, int nk)
     assert(PyDict_Check(dict));
 
     dict_version = (((PyDictObject*)(dict))->ma_version);
-    if (dict_version != guard->dict_version) {
+    if (unlikely(dict_version != guard->dict_version)) {
         assert(guard->npair >= 1);
 
         for (i=0; i < guard->npair; i++) {
@@ -708,37 +675,24 @@ static PyTypeObject GuardDict_Type = {
 
 /* GuardGlobals */
 
-static PyObject*
-fat_get_globals(void)
-{
-    PyThreadState *tstate;
-    PyFrameObject *frame;
-
-    /* FIXME: use _PyThreadState_UncheckedGet(), need to rebase fatpython */
-    tstate = PyThreadState_GET();
-    if (tstate == NULL)
-        return NULL;
-
-    frame = tstate->frame;
-    if (frame == NULL)
-        return NULL;
-
-    return frame->f_globals;
-}
-
 static int
 guard_globals_check(PyObject *self, PyObject **stack, int na, int nk)
 {
     GuardDictObject *guard = (GuardDictObject *)self;
-    PyObject *globals;
+    PyThreadState *tstate;
+    PyFrameObject *frame;
+
+    tstate = PyThreadState_GET();
+    if (tstate == NULL)
+        return 2;
+
+    frame = tstate->frame;
+    if (frame == NULL)
+        return 2;
 
     /* If the frame globals dictionary is different than the frame globals
      * dictionary used to create the guard, the guard check fails */
-    globals = fat_get_globals();
-    if (globals == NULL)
-        return 2;
-
-    if (globals != guard->dict)
+    if (frame->f_globals != guard->dict)
         return 2;
 
     return guard_dict_check(self, stack, na, nk);
@@ -770,9 +724,12 @@ guard_globals_init(PyObject *op, PyObject *args, PyObject *kwargs)
                                      &keys))
         return -1;
 
-    globals = fat_get_globals();
-    if (globals == NULL)
+    globals = PyEval_GetGlobals();
+    if (globals == NULL) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "unable to get globals");
         return -1;
+    }
 
     return guard_dict_init_keys(op, globals, keys);
 }
@@ -882,29 +839,42 @@ static int
 guard_builtins_check(PyObject *self, PyObject **stack, int na, int nk)
 {
     GuardBuiltinsObject *guard = (GuardBuiltinsObject *)self;
-    PyFuncGuardObject *guard_globals = (PyFuncGuardObject *)guard->guard_globals;
-    PyObject *builtins;
+    GuardDictObject *guard_globals = (GuardDictObject *)guard->guard_globals;
+    PyThreadState* tstate;
+    PyFrameObject *frame;
     int res;
 
-    if (guard->init_failed == -1) {
+    if (unlikely(guard->init_failed == -1)) {
         guard_builtins_init_guard(self, NULL);
         assert(guard->init_failed != -1);
     }
 
-    if (guard->init_failed)
+    if (unlikely(guard->init_failed))
         return 2;
+
+    tstate = PyThreadState_GET();
+    assert(tstate != NULL);
+
+    frame = tstate->frame;
+    assert(frame != NULL);
 
     /* If the builtin dictionary of the current frame is different than the
      * builtin dictionary used to create the guard, the guard check fails */
-    builtins = fat_get_builtins_dict(1);
-    if (builtins != guard->base.dict)
+    if (unlikely(frame->f_builtins != guard->base.dict))
         return 2;
 
     res = guard_dict_check(self, stack, na, nk);
-    if (res)
+    if (unlikely(res))
         return res;
 
-    return guard_globals->check(guard->guard_globals, stack, na, nk);
+    /* Belowed: inline code of guard_globals_check() */
+
+    /* If the frame globals dictionary is different than the frame globals
+     * dictionary used to create the guard, the guard check fails */
+    if (unlikely(frame->f_globals != guard_globals->dict))
+        return 2;
+
+    return guard_dict_check(guard->guard_globals, stack, na, nk);
 }
 
 static PyObject *
@@ -939,9 +909,18 @@ guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
                                      &keys))
         return -1;
 
-    builtins = fat_get_builtins_dict(0);
-    if (builtins == NULL)
+    builtins = PyEval_GetBuiltins();
+    if (builtins == NULL) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "unable to get builtins");
         return -1;
+    }
+
+    if (!PyDict_Check(builtins)) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "frame builtins is not a dict");
+        return -1;
+    }
 
     guard_globals = PyObject_CallFunctionObjArgs((PyObject *)&GuardGlobals_Type, keys, NULL);
     if (guard_globals == NULL)
