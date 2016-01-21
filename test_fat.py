@@ -47,6 +47,79 @@ class GuardsTests(unittest.TestCase):
         self.assertRaises(TypeError, fat.GuardGlobals, 123)
         self.assertRaises(TypeError, fat.GuardGlobals, (123,))
 
+    def test_globals_replace_globals(self):
+        guard = fat.GuardGlobals(('key',))
+        self.assertEqual(guard(), 0)
+
+        # check the guard in a global namespace different than the global
+        # namespace used to create the guard
+        ns = {'guard': guard}
+        exec("check = guard()", ns)
+        check = ns['check']
+
+        self.assertEqual(check, 2)
+
+    def test_builtins(self):
+        guard = fat.GuardBuiltins(('key',))
+        self.assertIs(guard.dict, builtins.__dict__)
+        self.assertEqual(guard.keys, ('key',))
+
+        guard_globals = guard.guard_globals
+        self.assertIs(guard_globals.dict, globals())
+        self.assertEqual(guard_globals.keys, ('key',))
+
+        # not enough parameters
+        self.assertRaises(TypeError, fat.GuardBuiltins)
+
+        # wrong types
+        self.assertRaises(TypeError, fat.GuardBuiltins, 123)
+        self.assertRaises(TypeError, fat.GuardBuiltins, (123,))
+
+    def test_builtins_replace_builtins(self):
+        ns = {'fat': fat}
+        exec("guard = fat.GuardBuiltins(('key',))", ns)
+        guard = ns['guard']
+
+        def check():
+            exec("check = guard()", ns)
+            return ns['check']
+
+        # check the guard with a replaced builtins dictionary
+        self.assertEqual(check(), 0)
+
+        # check the guard with a replaced builtins dictionary
+        ns['__builtins__'] = ns['__builtins__'].copy()
+
+        self.assertEqual(check(), 2)
+
+    def test_builtins_global_exists(self):
+        global global_var
+
+        try:
+            global_var = "hello"
+            guard = fat.GuardBuiltins(('global_var',))
+
+            # builtin overriden in the global namespace
+            self.assertEqual(guard(), 2)
+        finally:
+            del global_var
+
+        # even if the global is removed, the guard remembers that the
+        # global was replaced
+        self.assertEqual(guard(), 2)
+
+    def test_builtins_replace_globals(self):
+        guard = fat.GuardBuiltins(('key',))
+        self.assertEqual(guard(), 0)
+
+        # check the guard in a global namespace different than the global
+        # namespace used to create the guard
+        ns = {'guard': guard}
+        exec("check = guard()", ns)
+        check = ns['check']
+
+        self.assertEqual(check, 2)
+
     def test_guard_func(self):
         def func():
             return 3
@@ -199,22 +272,6 @@ class GetSpecializedTests(BaseTests):
         # specialized function since the function was modified
         self.assertEqual(func(), 'mock')
         self.assertEqual(fat.get_specialized(func), [])
-
-    def test_builtins_guard(self):
-        def func():
-            return 'slow'
-
-        def func2():
-            return 'fast'
-
-        guard = fat.GuardBuiltins(('chr',))
-        guards = [guard]
-        fat.specialize(func, func2, guards)
-
-        self.check_specialized(func,
-                               (func2.__code__, guards))
-
-        self.assertEqual(guard(), 0)
 
     def test_func_guard(self):
         def inlined():

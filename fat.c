@@ -440,7 +440,7 @@ check_dict_pair_guard(PyObject *dict, GuardDictPair *pair)
 }
 
 static PyObject*
-fat_get_builtins_dict(void)
+fat_get_builtins_dict(int raise)
 {
     PyThreadState* tstate;
     PyObject *builtins;
@@ -448,27 +448,31 @@ fat_get_builtins_dict(void)
 
     tstate = PyThreadState_Get();
     if (tstate == NULL) {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "unable to get the current Python thread state");
+        if (raise)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "unable to get the current Python thread state");
         return NULL;
     }
 
     frame = tstate->frame;
     if (frame == NULL) {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "the current Python thread state has no frame");
+        if (raise)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "the current Python thread state has no frame");
         return NULL;
     }
 
     builtins = frame->f_builtins;
     if (builtins == NULL) {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "frame has no builtins");
+        if (raise)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "frame has no builtins");
         return NULL;
     }
     if (!PyDict_Check(builtins)) {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "frame builtins is not a dict");
+        if (raise)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "frame builtins is not a dict");
         return NULL;
     }
     return builtins;
@@ -728,6 +732,8 @@ guard_globals_check(PyObject *self, PyObject **stack, int na, int nk)
     GuardDictObject *guard = (GuardDictObject *)self;
     PyObject *globals;
 
+    /* If the frame globals dictionary is different than the frame globals
+     * dictionary used to create the guard, the guard check fails */
     globals = fat_get_globals();
     if (globals == NULL)
         return 2;
@@ -825,13 +831,13 @@ static PyTypeObject GuardGlobals_Type = {
 typedef struct {
     GuardDictObject base;
     int init_failed;
-    PyObject *extra_guard;
+    PyObject *guard_globals;
 } GuardBuiltinsObject;
 
 static void
 guard_builtins_dealloc(GuardBuiltinsObject *self)
 {
-    Py_CLEAR(self->extra_guard);
+    Py_CLEAR(self->guard_globals);
     guard_dict_dealloc(&self->base);
 }
 
@@ -859,7 +865,7 @@ guard_builtins_init_guard(PyObject *self, PyObject *func)
         PyErr_Clear();
     }
 
-    globals_guard = (GuardDictObject *)guard->extra_guard;
+    globals_guard = (GuardDictObject *)guard->guard_globals;
     for (i=0; i < globals_guard->npair; i++) {
         if (globals_guard->pairs[i].value != NULL) {
             /* if name already exists in global, the guard must fail */
@@ -876,7 +882,8 @@ static int
 guard_builtins_check(PyObject *self, PyObject **stack, int na, int nk)
 {
     GuardBuiltinsObject *guard = (GuardBuiltinsObject *)self;
-    PyFuncGuardObject *extra_guard = (PyFuncGuardObject *)guard->extra_guard;
+    PyFuncGuardObject *guard_globals = (PyFuncGuardObject *)guard->guard_globals;
+    PyObject *builtins;
     int res;
 
     if (guard->init_failed == -1) {
@@ -887,11 +894,17 @@ guard_builtins_check(PyObject *self, PyObject **stack, int na, int nk)
     if (guard->init_failed)
         return 2;
 
+    /* If the builtin dictionary of the current frame is different than the
+     * builtin dictionary used to create the guard, the guard check fails */
+    builtins = fat_get_builtins_dict(1);
+    if (builtins != guard->base.dict)
+        return 2;
+
     res = guard_dict_check(self, stack, na, nk);
     if (res)
         return res;
 
-    return extra_guard->check(guard->extra_guard, stack, na, nk);
+    return guard_globals->check(guard->guard_globals, stack, na, nk);
 }
 
 static PyObject *
@@ -910,7 +923,7 @@ guard_builtins_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->init_failed = -1;
 
     /* object allocator must initialize the structure to zeros */
-    assert(self->extra_guard == NULL);
+    assert(self->guard_globals == NULL);
 
     return op;
 }
@@ -920,26 +933,26 @@ guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
 {
     static char *keywords[] = {"keys", NULL};
     PyObject *builtins, *keys;
-    PyObject *extra_guard;
+    PyObject *guard_globals;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:GuardBuiltins", keywords,
                                      &keys))
         return -1;
 
-    builtins = fat_get_builtins_dict();
+    builtins = fat_get_builtins_dict(0);
     if (builtins == NULL)
         return -1;
 
-    extra_guard = PyObject_CallFunctionObjArgs((PyObject *)&GuardGlobals_Type, keys, NULL);
-    if (extra_guard == NULL)
+    guard_globals = PyObject_CallFunctionObjArgs((PyObject *)&GuardGlobals_Type, keys, NULL);
+    if (guard_globals == NULL)
         return -1;
 
     if (guard_dict_init_keys(op, builtins, keys) < 0) {
-        Py_DECREF(extra_guard);
+        Py_DECREF(guard_globals);
         return -1;
     }
 
-    ((GuardBuiltinsObject *)op)->extra_guard = extra_guard;
+    ((GuardBuiltinsObject *)op)->guard_globals = guard_globals;
 
     return 0;
 }
@@ -950,10 +963,15 @@ guard_builtins_traverse(GuardBuiltinsObject *self, visitproc visit, void *arg)
     int res = guard_dict_traverse((GuardDictObject *)self, visit, arg);
     if (res)
         return res;
-    Py_VISIT(self->extra_guard);
+    Py_VISIT(self->guard_globals);
     return 0;
 }
 
+static PyMemberDef guard_builtins_members[] = {
+    {"guard_globals",   T_OBJECT,   offsetof(GuardBuiltinsObject, guard_globals),
+     RESTRICTED|READONLY},
+    {NULL}  /* Sentinel */
+};
 
 static PyTypeObject GuardBuiltins_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
@@ -984,7 +1002,7 @@ static PyTypeObject GuardBuiltins_Type = {
     0,                                          /* tp_iter */
     0,                                          /* tp_iternext */
     0,                                          /* tp_methods */
-    0,                                          /* tp_members */
+    guard_builtins_members,                     /* tp_members */
     0,                                          /* tp_getset */
     &GuardDict_Type,                            /* tp_base */
     0,                                          /* tp_dict */
