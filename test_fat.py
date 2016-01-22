@@ -1,5 +1,5 @@
-# Disable the AST optimizer on this module
-__astoptimizer__ = {'enabled': False}
+# Disable fatoptimizer on this module
+__fatoptimizer__ = {'enabled': False}
 
 import builtins
 import fat
