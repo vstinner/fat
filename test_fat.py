@@ -9,17 +9,7 @@ import textwrap
 import unittest
 
 
-class BaseTestCase(unittest.TestCase):
-    def setUp(self):
-        transformers = sys.get_code_transformers()
-        self.addCleanup(sys.set_code_transformers, transformers)
-
-        # Disable all code tranformers, we specialized functions
-        # manually in tests
-        sys.set_code_transformers([])
-
-
-class GuardsTests(BaseTestCase):
+class GuardsTests(unittest.TestCase):
     # fat.GuardFunc is tested in fattester.py
 
     def test_guard(self):
@@ -150,6 +140,19 @@ class GuardsTests(BaseTestCase):
 
 def guard_dict(ns, key):
     return [fat.GuardDict(ns, (key,))]
+
+
+class BaseTestCase(unittest.TestCase):
+    def setUp(self):
+        transformers = sys.get_code_transformers()
+        self.addCleanup(sys.set_code_transformers, transformers)
+
+        # Disable all code tranformers, we specialized functions
+        # manually in tests
+        sys.set_code_transformers([])
+
+    def assertNotSpecialized(self, func):
+        self.assertEqual(fat.get_specialized(func), [])
 
 
 class BaseTests(BaseTestCase):
@@ -311,6 +314,9 @@ class BehaviourTests(BaseTestCase):
         def fast():
             return "fast"
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         ns = {}
         guards = guard_dict(ns, 'key')
 
@@ -449,6 +455,9 @@ class BehaviourTests(BaseTestCase):
         def fast(obj):
             return 'fast'
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         fat.specialize(func, fast, [fat.GuardArgType(0, (int,))])
 
         self.assertEqual(func(5), 'fast')
@@ -464,6 +473,9 @@ class BehaviourTests(BaseTestCase):
         def fast(obj):
             return 'fast'
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         fat.specialize(func, fast, [fat.GuardArgType(0, (MyClass,))])
 
         obj = MyClass()
@@ -476,6 +488,9 @@ class BehaviourTests(BaseTestCase):
 
         def fast(x):
             return "fast: %s" % x
+
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
 
         fat.specialize(func, fast, [fat.GuardArgType(0, (int,))])
 
@@ -617,6 +632,9 @@ class SpecializeTests(BaseTests):
         def func2():
             pass
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(func2)
+
         ns = {}
         guards = guard_dict(ns, 'key')
 
@@ -635,6 +653,10 @@ class SpecializeTests(BaseTests):
 
         def func3():
             pass
+
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(func2)
+        self.assertNotSpecialized(func3)
 
         ns = {}
         guards = guard_dict(ns, 'key')
@@ -663,6 +685,9 @@ class SpecializeTests(BaseTests):
         def fast(data, cb):
             return 3
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         self.assertNotEqual(func.__code__.co_cellvars, ())
         self.assertEqual(fast.__code__.co_cellvars, ())
 
@@ -684,6 +709,9 @@ class SpecializeTests(BaseTests):
 
         def fast(data, cb):
             return [cb(item) for item in data]
+
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
 
         self.assertEqual(func.__code__.co_cellvars, ())
         self.assertNotEqual(fast.__code__.co_cellvars, ())
@@ -711,6 +739,9 @@ class SpecializeTests(BaseTests):
         def fast():
             return 1
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         ns = {}
         guards = guard_dict(ns, 'key')
 
@@ -734,6 +765,9 @@ class SpecializeTests(BaseTests):
             return fast
         fast = create_fast()
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         ns = {}
         guards = guard_dict(ns, 'key')
 
@@ -752,6 +786,9 @@ class SpecializeTests(BaseTests):
 
         def fast(x, y):
             return 2
+
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
 
         ns = {}
         guards = guard_dict(ns, 'key')
@@ -773,6 +810,9 @@ class SpecializeTests(BaseTests):
         def fast(*, x=1, y=1):
             return 2
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         ns = {}
         guards = guard_dict(ns, 'key')
 
@@ -793,6 +833,9 @@ class SpecializeTests(BaseTests):
         def fast(x=2):
             return 2
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         ns = {}
         guards = guard_dict(ns, 'key')
 
@@ -809,6 +852,9 @@ class SpecializeTests(BaseTests):
         def fast(*, x=2):
             return 2
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(fast)
+
         ns = {}
         guards = guard_dict(ns, 'key')
 
@@ -824,6 +870,9 @@ class SpecializeTests(BaseTests):
 
         def func2():
             pass
+
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(func2)
 
         with self.assertRaises(TypeError):
             fat.specialize(func, func2, ['xxx'])
@@ -889,6 +938,9 @@ class SpecializeTests(BaseTests):
         def func2():
             pass
 
+        self.assertNotSpecialized(func)
+        self.assertNotSpecialized(func2)
+
         self.assertRaises(TypeError, fat.guard_type_dict)
         self.assertRaises(TypeError, fat.guard_type_dict, str)
         self.assertRaises(TypeError, fat.guard_type_dict, 123, ('attr',))
@@ -921,6 +973,8 @@ class MiscTests(BaseTestCase):
     def test_replace_constants(self):
         def func():
             return 3
+
+        self.assertNotSpecialized(func)
 
         code = func.__code__
         self.assertEqual(code.co_consts, (None, 3))
