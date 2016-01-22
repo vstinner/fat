@@ -4,11 +4,22 @@ __astoptimizer__ = {'enabled': False}
 import builtins
 import fat
 import os.path
+import sys
 import textwrap
 import unittest
 
 
-class GuardsTests(unittest.TestCase):
+class BaseTestCase(unittest.TestCase):
+    def setUp(self):
+        transformers = sys.get_code_transformers()
+        self.addCleanup(sys.set_code_transformers, transformers)
+
+        # Disable all code tranformers, we specialized functions
+        # manually in tests
+        sys.set_code_transformers([])
+
+
+class GuardsTests(BaseTestCase):
     # fat.GuardFunc is tested in fattester.py
 
     def test_guard(self):
@@ -141,7 +152,7 @@ def guard_dict(ns, key):
     return [fat.GuardDict(ns, (key,))]
 
 
-class BaseTests(unittest.TestCase):
+class BaseTests(BaseTestCase):
     def check_guard(self, guard, expected):
         guard_type = type(expected)
         self.assertEqual(type(guard), guard_type)
@@ -290,7 +301,7 @@ class GetSpecializedTests(BaseTests):
                                (func2.__code__, [guard]))
 
 
-class BehaviourTests(unittest.TestCase):
+class BehaviourTests(BaseTestCase):
     """Test behaviour of specialized functions."""
 
     def test_modify_func_code(self):
@@ -541,7 +552,7 @@ class BehaviourTests(unittest.TestCase):
         self.assertEqual(guard(), 2)
 
 
-class MethodTests(unittest.TestCase):
+class MethodTests(BaseTestCase):
     """Test specialized methods."""
 
     def basic(self):
@@ -906,7 +917,7 @@ class SpecializeTests(BaseTests):
                          "arg_type must be a type, got int")
 
 
-class MiscTests(unittest.TestCase):
+class MiscTests(BaseTestCase):
     def test_replace_constants(self):
         def func():
             return 3
