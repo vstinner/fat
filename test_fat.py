@@ -24,6 +24,9 @@ class GuardsTests(unittest.TestCase):
         self.assertEqual(guard(1, 2, 3), 0)
         self.assertEqual(guard(1, 2, "hello"), 1)
 
+        # FIXME: keywords are not supported yet
+        self.assertEqual(guard(1, 2, arg=3), 1)
+
     def test_guard_dict(self):
         ns = {'key': 1}
 

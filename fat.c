@@ -31,6 +31,11 @@ guard_arg_type_check(PyObject *self, PyObject **stack, int na, int nk)
     Py_ssize_t i;
     int res;
 
+    if (nk) {
+        /* FIXME: implement keywords */
+        return 1;
+    }
+
     if (guard->arg_index >= na)
         return 1;
 
@@ -44,8 +49,6 @@ guard_arg_type_check(PyObject *self, PyObject **stack, int na, int nk)
             break;
         }
     }
-
-    /* FIXME: implement keywords */
 
     return res;
 }
