@@ -66,7 +66,7 @@ def main():
         'name': 'fat',
         'version': VERSION,
         'license': 'MIT license',
-        'description': 'Static optimizer specializing functions with guards',
+        'description': 'Fast guards used by fatoptimizer to specialize functions',
         'long_description': long_description,
         "url": "https://fatoptimizer.readthedocs.org/en/latest/fat.html",
         'author': 'Victor Stinner',
