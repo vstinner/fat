@@ -566,15 +566,20 @@ guard_dict_init_keys(PyObject *op, PyObject *dict, PyObject *keys)
             goto error;
         }
 
+        /* Intern the key string */
+        Py_INCREF(key);
+        PyUnicode_InternInPlace(&key);
+
         value = PyObject_GetItem(dict, key);
         if (value == NULL && PyErr_Occurred()) {
-            if (!PyErr_ExceptionMatches(PyExc_KeyError))
+            if (!PyErr_ExceptionMatches(PyExc_KeyError)) {
+                Py_DECREF(key);
                 goto error;
+            }
             /* key doesn't exist */
             PyErr_Clear();
         }
 
-        Py_INCREF(key);
         pairs[i].key = key;
         pairs[i].value = value;
         npair = i + 1;
@@ -927,7 +932,8 @@ guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
         return -1;
     }
 
-    guard_globals = PyObject_CallFunctionObjArgs((PyObject *)&GuardGlobals_Type, keys, NULL);
+    guard_globals = PyObject_CallFunctionObjArgs(
+                        (PyObject *)&GuardGlobals_Type, keys, NULL);
     if (guard_globals == NULL)
         return -1;
 
