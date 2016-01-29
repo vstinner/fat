@@ -890,13 +890,17 @@ class SpecializeTests(BaseTests):
         self.assertEqual(str(cm.exception),
                          "func must be a function, not str")
 
-        # FIXME: reimplement this test
-        #with self.assertRaises(ValueError) as cm:
-        #    # must not watch itself
-        #    fat.specialize(func, func2,
-        #                    [{"guard_type": "func", "func": func}])
-        #self.assertEqual(str(cm.exception),
-        #                 "useless func guard, a function already watch itself")
+        def func():
+            pass
+
+        def func2():
+            pass
+
+        with self.assertRaises(ValueError) as cm:
+            # must not watch itself
+            fat.specialize(func, func2, [fat.GuardFunc(func)])
+        self.assertEqual(str(cm.exception),
+                         "useless GuardFunc, a function already watch itself")
 
     def test_add_builtins_guard_error(self):
         with self.assertRaises(TypeError) as cm:

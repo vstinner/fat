@@ -243,6 +243,21 @@ typedef struct {
 } GuardFuncObject;
 
 static int
+guard_func_init_guard(PyObject *self, PyObject *func)
+{
+    GuardFuncObject *guard = (GuardFuncObject *)self;
+
+    if ((PyObject *)func == guard->func) {
+        /* Replacing the code object of a function already removes its
+         * specialized code, no need to add a guard */
+        PyErr_SetString(PyExc_ValueError,
+                        "useless GuardFunc, a function already watch itself");
+        return -1;
+    }
+    return 0;
+}
+
+static int
 guard_func_check(PyObject *self, PyObject** stack, int na, int nk)
 {
     GuardFuncObject *guard = (GuardFuncObject *)self;
@@ -289,6 +304,7 @@ guard_func_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
 
     self = (GuardFuncObject *)op;
+    self->base.init = guard_func_init_guard;
     self->base.check = guard_func_check;
     self->func = NULL;
     self->code = NULL;
@@ -314,16 +330,6 @@ guard_func_init(PyObject *op, PyObject *args, PyObject *kwargs)
                      Py_TYPE(func)->tp_name);
         return -1;
     }
-
-    /* FIXME: reimplement this check in guard_func_guard_init */
-#if 0
-    if ((PyObject *)func == spefunc) {
-        /* spefunc_set_code() disables optimizations, no need to add a guard */
-        PyErr_SetString(PyExc_ValueError,
-                        "useless func guard, a function already watch itself");
-        return -1;
-    }
-#endif
 
     code = ((PyFunctionObject*)func)->func_code;
 
