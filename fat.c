@@ -581,9 +581,9 @@ guard_dict_init_keys(PyObject *op, PyObject *dict,
             PyErr_Clear();
         }
 
-        pairs[i].key = key;
-        pairs[i].value = value;
-        npair = i + 1;
+        pairs[npair].key = key;
+        pairs[npair].value = value;
+        npair++;
     }
 
     guard_dict_clear(self);
@@ -605,14 +605,27 @@ error:
 static int
 guard_dict_init(PyObject *op, PyObject *args, PyObject *kwargs)
 {
-    static char *keywords[] = {"dict", "keys", NULL};
-    PyObject *dict, *keys;
+    PyObject *dict;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O:GuardDict", keywords,
-                                     &PyDict_Type, &dict, &keys))
+    if (kwargs) {
+        PyErr_SetString(PyExc_TypeError,
+                        "keyword arguments are not supported");
         return -1;
+    }
+    assert(PyTuple_Check(args));
+    if (PyTuple_GET_SIZE(args) == 0) {
+        PyErr_SetString(PyExc_TypeError, "missing dict parameter");
+        return -1;
+    }
+    dict = PyTuple_GET_ITEM(args, 0);
+    if (!PyDict_Check(dict)) {
+        PyErr_Format(PyExc_TypeError,
+                     "dict parameter must be dict, got %s",
+                     Py_TYPE(dict)->tp_name);
+        return -1;
+    }
 
-    return guard_dict_init_keys(op, dict, 0, keys);
+    return guard_dict_init_keys(op, dict, 1, args);
 }
 
 static PyObject*

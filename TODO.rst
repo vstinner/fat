@@ -1,5 +1,7 @@
 TODO
 ====
 
-* enhance fat.GuardDict() constructors: use ``*keys`` instead of expecting
-  a tuple
+* Guards: give up on checking the value after N fails?
+* GuardArgType: support keyword parameters?
+* GuardDict: use PyDict_CheckExact? enum uses OrderedDict for class
+  namespace: accept also OrderedDict?

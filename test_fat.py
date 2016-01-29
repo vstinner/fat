@@ -30,7 +30,7 @@ class GuardsTests(unittest.TestCase):
     def test_guard_dict(self):
         ns = {'key': 1}
 
-        guard = fat.GuardDict(ns, ('key',))
+        guard = fat.GuardDict(ns, 'key')
         self.assertIs(guard.dict, ns)
         self.assertEqual(guard.keys, ('key',))
 
@@ -146,7 +146,7 @@ class GuardsTests(unittest.TestCase):
 
 
 def guard_dict(ns, key):
-    return [fat.GuardDict(ns, (key,))]
+    return [fat.GuardDict(ns, key)]
 
 
 class BaseTestCase(unittest.TestCase):
@@ -916,12 +916,12 @@ class SpecializeTests(BaseTests):
             fat.GuardDict(d)
 
         with self.assertRaises(TypeError):
-            # type argument is not a type
-            fat.GuardDict(123, ("key",))
+            # dict argument is not a dict
+            fat.GuardDict(123, "key")
 
         with self.assertRaises(TypeError) as cm:
             # key argument is not a str
-            fat.GuardDict(d, (123,))
+            fat.GuardDict(d, 123)
         self.assertEqual(str(cm.exception),
                          "key must be str, not int")
 
