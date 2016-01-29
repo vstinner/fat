@@ -40,19 +40,21 @@ class GuardsTests(unittest.TestCase):
         self.assertEqual(guard(), 2)
 
     def test_globals(self):
-        guard = fat.GuardGlobals(('key',))
+        guard = fat.GuardGlobals('key')
         self.assertIs(guard.dict, globals())
         self.assertEqual(guard.keys, ('key',))
 
         # not enough parameters
         self.assertRaises(TypeError, fat.GuardGlobals)
 
+        # keyword are not suppported
+        self.assertRaises(TypeError, fat.GuardGlobals, 'str', x=1)
+
         # wrong types
         self.assertRaises(TypeError, fat.GuardGlobals, 123)
-        self.assertRaises(TypeError, fat.GuardGlobals, (123,))
 
     def test_globals_replace_globals(self):
-        guard = fat.GuardGlobals(('key',))
+        guard = fat.GuardGlobals('key')
         self.assertEqual(guard(), 0)
 
         # check the guard in a global namespace different than the global
@@ -64,7 +66,7 @@ class GuardsTests(unittest.TestCase):
         self.assertEqual(check, 2)
 
     def test_builtins(self):
-        guard = fat.GuardBuiltins(('key',))
+        guard = fat.GuardBuiltins('key')
         self.assertIs(guard.dict, builtins.__dict__)
         self.assertEqual(guard.keys, ('key',))
 
@@ -75,13 +77,15 @@ class GuardsTests(unittest.TestCase):
         # not enough parameters
         self.assertRaises(TypeError, fat.GuardBuiltins)
 
+        # keyword are not suppported
+        self.assertRaises(TypeError, fat.GuardBuiltins, 'str', x=1)
+
         # wrong types
         self.assertRaises(TypeError, fat.GuardBuiltins, 123)
-        self.assertRaises(TypeError, fat.GuardBuiltins, (123,))
 
     def test_builtins_replace_builtins(self):
         ns = {'fat': fat}
-        exec("guard = fat.GuardBuiltins(('key',))", ns)
+        exec("guard = fat.GuardBuiltins('key')", ns)
         guard = ns['guard']
 
         def check():
@@ -101,7 +105,7 @@ class GuardsTests(unittest.TestCase):
 
         try:
             global_var = "hello"
-            guard = fat.GuardBuiltins(('global_var',))
+            guard = fat.GuardBuiltins('global_var')
 
             # builtin overriden in the global namespace
             self.assertEqual(guard(), 2)
@@ -113,7 +117,7 @@ class GuardsTests(unittest.TestCase):
         self.assertEqual(guard(), 2)
 
     def test_builtins_replace_globals(self):
-        guard = fat.GuardBuiltins(('key',))
+        guard = fat.GuardBuiltins('key')
         self.assertEqual(guard(), 0)
 
         # check the guard in a global namespace different than the global
@@ -351,7 +355,7 @@ class BehaviourTests(BaseTestCase):
             def fast():
                 return "fast: 3"
 
-            fat.specialize(func, fast, [fat.GuardBuiltins(('len',))])
+            fat.specialize(func, fast, [fat.GuardBuiltins('len')])
         """)
 
         ns = self._exec(code)
@@ -407,7 +411,7 @@ class BehaviourTests(BaseTestCase):
                 return "fast: %s" % filename.endswith('.py')
 
             fat.specialize(func, fast,
-                             [fat.GuardGlobals(('is_python',)),
+                             [fat.GuardGlobals('is_python'),
                               fat.GuardFunc(is_python)])
         """)
         ns = self._exec(code)
@@ -528,7 +532,7 @@ class BehaviourTests(BaseTestCase):
             def fast():
                 return "fast: A"
 
-            guard = fat.GuardBuiltins(('chr',))
+            guard = fat.GuardBuiltins('chr')
             fat.specialize(func, fast, [guard])
         """)
 
@@ -554,7 +558,7 @@ class BehaviourTests(BaseTestCase):
             def fast():
                 return "fast: A"
 
-            guard = fat.GuardBuiltins(('chr',))
+            guard = fat.GuardBuiltins('chr')
             fat.specialize(func, fast, [guard])
         """)
 
@@ -901,23 +905,6 @@ class SpecializeTests(BaseTests):
             fat.specialize(func, func2, [fat.GuardFunc(func)])
         self.assertEqual(str(cm.exception),
                          "useless GuardFunc, a function already watch itself")
-
-    def test_add_builtins_guard_error(self):
-        with self.assertRaises(TypeError) as cm:
-            # missing 'keys' parameter
-            fat.GuardBuiltins()
-
-        with self.assertRaises(TypeError) as cm:
-            # invalid 'name' type
-            fat.GuardBuiltins(123)
-        self.assertEqual(str(cm.exception),
-                         "keys must be a tuple of str, not int")
-
-        with self.assertRaises(TypeError) as cm:
-            # invalid 'name' type
-            fat.GuardBuiltins((123,))
-        self.assertEqual(str(cm.exception),
-                         "key must be str, not int")
 
     def test_add_dict_guard_error(self):
         d = {"key": 3}

@@ -522,7 +522,8 @@ guard_dict_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static int
-guard_dict_init_keys(PyObject *op, PyObject *dict, PyObject *keys)
+guard_dict_init_keys(PyObject *op, PyObject *dict,
+                     Py_ssize_t first_key, PyObject *keys)
 {
     GuardDictObject *self = (GuardDictObject *)op;
     GuardDictPair *pairs = NULL;
@@ -538,7 +539,7 @@ guard_dict_init_keys(PyObject *op, PyObject *dict, PyObject *keys)
     }
 
     nkeys = PyTuple_GET_SIZE(keys);
-    if (!nkeys) {
+    if ((nkeys - first_key) <= 0) {
         PyErr_SetString(PyExc_TypeError,
                         "keys must at least contain one key");
         goto error;
@@ -554,7 +555,7 @@ guard_dict_init_keys(PyObject *op, PyObject *dict, PyObject *keys)
         goto error;
     }
 
-    for (i=0; i < nkeys; i++) {
+    for (i=first_key; i < nkeys; i++) {
         PyObject *key, *value;
 
         key = PyTuple_GET_ITEM(keys, i);
@@ -611,7 +612,7 @@ guard_dict_init(PyObject *op, PyObject *args, PyObject *kwargs)
                                      &PyDict_Type, &dict, &keys))
         return -1;
 
-    return guard_dict_init_keys(op, dict, keys);
+    return guard_dict_init_keys(op, dict, 0, keys);
 }
 
 static PyObject*
@@ -729,12 +730,14 @@ guard_globals_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 guard_globals_init(PyObject *op, PyObject *args, PyObject *kwargs)
 {
-    static char *keywords[] = {"keys", NULL};
     PyObject *globals, *keys;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:GuardGlobals", keywords,
-                                     &keys))
+    if (kwargs) {
+        PyErr_SetString(PyExc_TypeError,
+                        "keyword arguments are not supported");
         return -1;
+    }
+    keys = args;
 
     globals = PyEval_GetGlobals();
     if (globals == NULL) {
@@ -743,7 +746,7 @@ guard_globals_init(PyObject *op, PyObject *args, PyObject *kwargs)
         return -1;
     }
 
-    return guard_dict_init_keys(op, globals, keys);
+    return guard_dict_init_keys(op, globals, 0, keys);
 }
 
 
@@ -911,13 +914,15 @@ guard_builtins_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
 {
-    static char *keywords[] = {"keys", NULL};
     PyObject *builtins, *keys;
     PyObject *guard_globals;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:GuardBuiltins", keywords,
-                                     &keys))
+    if (kwargs) {
+        PyErr_SetString(PyExc_TypeError,
+                        "keyword arguments are not supported");
         return -1;
+    }
+    keys = args;
 
     builtins = PyEval_GetBuiltins();
     if (builtins == NULL) {
@@ -932,12 +937,11 @@ guard_builtins_init(PyObject *op, PyObject *args, PyObject *kwargs)
         return -1;
     }
 
-    guard_globals = PyObject_CallFunctionObjArgs(
-                        (PyObject *)&GuardGlobals_Type, keys, NULL);
+    guard_globals = PyObject_CallObject((PyObject *)&GuardGlobals_Type, keys);
     if (guard_globals == NULL)
         return -1;
 
-    if (guard_dict_init_keys(op, builtins, keys) < 0) {
+    if (guard_dict_init_keys(op, builtins, 0, keys) < 0) {
         Py_DECREF(guard_globals);
         return -1;
     }
