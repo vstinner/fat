@@ -431,6 +431,7 @@ check_dict_pair_guard(PyObject *dict, GuardDictPair *pair)
 {
     PyObject *current_value;
 
+    /* FIXME: Use PyDict_GetItem? */
     current_value = PyObject_GetItem(dict, pair->key);
     if (current_value == NULL && PyErr_Occurred()) {
         if (!PyErr_ExceptionMatches(PyExc_KeyError)) {
