@@ -68,7 +68,7 @@ def main():
         'license': 'MIT license',
         'description': 'Fast guards used by fatoptimizer to specialize functions',
         'long_description': long_description,
-        "url": "https://fatoptimizer.readthedocs.org/en/latest/fat.html",
+        "url": "https://fatoptimizer.readthedocs.io/en/latest/fat.html",
         'author': 'Victor Stinner',
         'author_email': 'victor.stinner@gmail.com',
         'ext_modules': [ext],

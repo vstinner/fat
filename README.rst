@@ -11,14 +11,14 @@ The ``fat`` module is required to run code optimized by ``fatoptimizer`` if
 at least one function is specialized.
 
 * `fat documentation
-  <https://fatoptimizer.readthedocs.org/en/latest/fat.html>`_
+  <https://fatoptimizer.readthedocs.io/en/latest/fat.html>`_
 * `fat project at GitHub
   <https://github.com/haypo/fat>`_
 * `fat project at the Python Cheeseshop (PyPI)
   <https://pypi.python.org/pypi/fat>`_
 * `fatoptimizer documentation
-  <https://fatoptimizer.readthedocs.org/>`_
+  <https://fatoptimizer.readthedocs.io/>`_
 * `FAT Python
-  <https://faster-cpython.readthedocs.org/fat_python.html>`_
+  <https://faster-cpython.readthedocs.io/fat_python.html>`_
 
 The ``fat`` module requires a Python 3.6 patched with PEP 510 patch.
