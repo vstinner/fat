@@ -23,7 +23,7 @@ typedef struct {
 } GuardArgTypeObject;
 
 static int
-guard_arg_type_check(PyObject *self, PyObject **stack, int na, int nk)
+guard_arg_type_check(PyObject *self, PyObject **stack, Py_ssize_t nargs, PyObject *kwnames)
 {
     GuardArgTypeObject *guard = (GuardArgTypeObject *)self;
     PyObject *arg;
@@ -31,12 +31,12 @@ guard_arg_type_check(PyObject *self, PyObject **stack, int na, int nk)
     Py_ssize_t i;
     int res;
 
-    if (nk) {
+    if (kwnames != NULL && PyTuple_GET_SIZE(kwnames) != 0) {
         /* FIXME: implement keywords */
         return 1;
     }
 
-    if (guard->arg_index >= na)
+    if (guard->arg_index >= nargs)
         return 1;
 
     arg = stack[guard->arg_index];
@@ -258,7 +258,7 @@ guard_func_init_guard(PyObject *self, PyObject *func)
 }
 
 static int
-guard_func_check(PyObject *self, PyObject** stack, int na, int nk)
+guard_func_check(PyObject *self, PyObject** stack, Py_ssize_t nargs, PyObject *kwnames)
 {
     GuardFuncObject *guard = (GuardFuncObject *)self;
     PyFunctionObject *func;
@@ -456,7 +456,7 @@ check_dict_pair_guard(PyObject *dict, GuardDictPair *pair)
 }
 
 static int
-guard_dict_check(PyObject *self, PyObject **stack, int na, int nk)
+guard_dict_check(PyObject *self, PyObject **stack, Py_ssize_t nargs, PyObject *kwnames)
 {
     GuardDictObject *guard = (GuardDictObject *)self;
     PY_UINT64_T dict_version;
@@ -466,7 +466,7 @@ guard_dict_check(PyObject *self, PyObject **stack, int na, int nk)
     dict = guard->dict;
     assert(PyDict_Check(dict));
 
-    dict_version = (((PyDictObject*)(dict))->ma_version);
+    dict_version = (((PyDictObject*)(dict))->ma_version_tag);
     if (unlikely(dict_version != guard->dict_version)) {
         assert(guard->npair >= 1);
 
@@ -591,7 +591,7 @@ guard_dict_init_keys(PyObject *op, PyObject *dict,
 
     Py_INCREF(dict);
     self->dict = dict;
-    self->dict_version = (((PyDictObject*)(dict))->ma_version);
+    self->dict_version = (((PyDictObject*)(dict))->ma_version_tag);
     self->npair = npair;
     self->pairs = pairs;
     return 0;
@@ -705,7 +705,7 @@ static PyTypeObject GuardDict_Type = {
 /* GuardGlobals */
 
 static int
-guard_globals_check(PyObject *self, PyObject **stack, int na, int nk)
+guard_globals_check(PyObject *self, PyObject **stack, Py_ssize_t nargs, PyObject *kwnames)
 {
     GuardDictObject *guard = (GuardDictObject *)self;
     PyThreadState *tstate;
@@ -722,7 +722,7 @@ guard_globals_check(PyObject *self, PyObject **stack, int na, int nk)
     if (unlikely(frame->f_globals != guard->dict))
         return 2;
 
-    return guard_dict_check(self, stack, na, nk);
+    return guard_dict_check(self, stack, nargs, kwnames);
 }
 
 static PyObject *
@@ -865,7 +865,7 @@ guard_builtins_init_guard(PyObject *self, PyObject *func)
 }
 
 static int
-guard_builtins_check(PyObject *self, PyObject **stack, int na, int nk)
+guard_builtins_check(PyObject *self, PyObject **stack, Py_ssize_t nargs, PyObject *kwnames)
 {
     GuardBuiltinsObject *guard = (GuardBuiltinsObject *)self;
     GuardDictObject *guard_globals = (GuardDictObject *)guard->guard_globals;
@@ -897,11 +897,11 @@ guard_builtins_check(PyObject *self, PyObject **stack, int na, int nk)
     if (unlikely(frame->f_builtins != guard->base.dict))
         return 2;
 
-    res = guard_dict_check(guard->guard_globals, stack, na, nk);
+    res = guard_dict_check(guard->guard_globals, stack, nargs, kwnames);
     if (unlikely(res))
         return res;
 
-    return guard_dict_check(self, stack, na, nk);
+    return guard_dict_check(self, stack, nargs, kwnames);
 }
 
 static PyObject *
