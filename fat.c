@@ -885,21 +885,27 @@ guard_builtins_check(PyObject *self, PyObject **stack, Py_ssize_t nargs, PyObjec
     assert(tstate != NULL);
 
     frame = tstate->frame;
-    assert(frame != NULL);
+    if (frame == NULL) {
+        /* Python is probably being finalized */
+        return 2;
+    }
 
     /* If the frame globals dictionary is different than the frame globals
      * dictionary used to create the guard, the guard check fails */
-    if (unlikely(frame->f_globals != guard_globals->dict))
+    if (unlikely(frame->f_globals != guard_globals->dict)) {
         return 2;
+    }
 
     /* If the builtin dictionary of the current frame is different than the
      * builtin dictionary used to create the guard, the guard check fails */
-    if (unlikely(frame->f_builtins != guard->base.dict))
+    if (unlikely(frame->f_builtins != guard->base.dict)) {
         return 2;
+    }
 
     res = guard_dict_check(guard->guard_globals, stack, nargs, kwnames);
-    if (unlikely(res))
+    if (unlikely(res)) {
         return res;
+    }
 
     return guard_dict_check(self, stack, nargs, kwnames);
 }
