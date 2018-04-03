@@ -2,6 +2,10 @@
 fat module
 **********
 
+.. image:: http://unmaintained.tech/badge.svg
+   :target: http://unmaintained.tech/
+   :alt: No Maintenance Intended
+
 The ``fat`` module is a Python extension module (written in C) implementing
 fast guards. The fatoptimizer optimizer uses ``fat`` guards to specialize
 functions. ``fat`` guards are used to verify assumptions used to specialize the
