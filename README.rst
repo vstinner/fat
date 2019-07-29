@@ -18,8 +18,6 @@ at least one function is specialized.
   <https://fatoptimizer.readthedocs.io/en/latest/fat.html>`_
 * `fat project at GitHub
   <https://github.com/vstinner/fat>`_
-* `fat project at the Python Cheeseshop (PyPI)
-  <https://pypi.python.org/pypi/fat>`_
 * `fatoptimizer documentation
   <https://fatoptimizer.readthedocs.io/>`_
 * `FAT Python
